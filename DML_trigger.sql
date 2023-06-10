@@ -31,7 +31,7 @@ begin tran
 SELECT * from dbo.MASCOTA
 SELECT * from dbo.REGISTRO_BRAZALETE
 execute dbo.registro_mascota_brazalete 14, 16, 5, 'LUCY', 'gato', 
-'hembra', 'atigrado', 'doméstico', 2, '60-100', '36', '80', 'croquetas', 'No'
+'hembra', 'atigrado', 'domÃ©stico', 2, '60-100', '36', '80', 'croquetas', 'No'
 SELECT 'DESPUES DEL PROCEDIMIENTO'
 SELECT * from dbo.MASCOTA
 SELECT * from dbo.REGISTRO_BRAZALETE
@@ -122,6 +122,59 @@ DBCC CHECKIDENT ('[consulta]', RESEED, 5);
 ---------------------------------------------------------------------------------------------------
 
 --Realice un procedimiento almacenado para el registro y venta de medicamentos
---incluyendo la actualización del stock
+CREATE or alter PROCEDURE dbo.RegistrarMedicamento
+    @id_medicamento numeric(10, 0),
+    @id_consulta numeric(10, 0),
+    @nombre_medicamento varchar(10),
+    @costo money,
+    @cantidad numeric(4, 0)
+AS
+BEGIN
+	if exists (Select * from dbo.MEDICAMENTO
+				where id_medicamento = @id_medicamento and id_consulta = @id_consulta 
+				and nombre_medicamento =@nombre_medicamento and costo = @costo)
+	begin
+		update dbo.MEDICAMENTO set cantidad = @cantidad
+		where id_medicamento = @id_medicamento and id_consulta = @id_consulta and
+		nombre_medicamento = @nombre_medicamento and costo = @costo
+
+		SELECT 'Se cambio correctamente la cantidad de medicamento' AS Mensaje;
+	end
+	else
+	begin
+		if exists (select * from dbo.CONSULTA where id_consulta =@id_consulta)
+			begin
+				INSERT INTO dbo.MEDICAMENTO(id_consulta,nombre_medicamento,costo,cantidad)
+				VALUES ( @id_consulta, @nombre_medicamento, @costo, @cantidad);
+
+				SELECT 'Consulta registrada correctamente' AS Mensaje;
+			end
+		else 
+		begin
+			SELECT 'La consulta a la que quiere agregar el medicamento no existe ' AS Mensaje;
+		end
+	end
+    
+END
+------
+--incluyendo la actualizaciÃ³n del stock
+
+--cambio de cantidad medicamento
+begin tran
+SELECT * from dbo.MEDICAMENTO
+execute dbo.RegistrarMedicamento 1,1,'Ibuprofeno',700,2
+SELECT 'DESPUES DEL PROCEDIMIENTO'
+SELECT * from dbo.MEDICAMENTO
+rollback tran
+--insertar medicamento
+begin tran
+SELECT * from dbo.MEDICAMENTO
+execute dbo.RegistrarMedicamento null,1,'Vendas',150,500
+SELECT 'DESPUES DEL PROCEDIMIENTO'
+SELECT * from dbo.MEDICAMENTO
+rollback tran
+
+--Si se prueba es necesario quitar la insercion del indexado
+DBCC CHECKIDENT ('[MEDICAMENTO]', RESEED, 6);
 
 Select * from dbo.MEDICAMENTO
